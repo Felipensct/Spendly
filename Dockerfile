@@ -18,6 +18,7 @@ RUN go build -o auth-service cmd/main.go
 
 # Use a minimal image to run the service
 FROM alpine:3.18
+
 WORKDIR /app
 
 # Copy the binary from the builder image

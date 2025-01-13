@@ -2,6 +2,8 @@ package main
 
 import (
 	"auth-service/internal/db"
+	pb "auth-service/internal/grpc"
+	"auth-service/internal/service"
 	"log"
 	"net"
 
@@ -21,7 +23,7 @@ func main() {
 	grpcServer := grpc.NewServer()
 	log.Println("gRPC server inicializado")
 
-	//proto.RegisterAuthServiceServer(grpcServer, &server.AuthServiceServer{})
+	pb.RegisterAuthServiceServer(grpcServer, &service.AuthServiceServer{})
 	log.Println("AuthService registrado com o gRPC server")
 
 	// Inicia o servidor gRPC
