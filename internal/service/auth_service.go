@@ -1,29 +1,41 @@
 package service
 
 import (
-	"auth-service/internal/db"
 	"auth-service/internal/grpc"
+	"auth-service/internal/repository"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/bcrypt"
 )
+
+//TODO: Estudar uso do regex para validação de email e senha
 
 type AuthServiceServer struct {
 	grpc.UnimplementedAuthServiceServer
 }
 
-// TODO: Criar método mais segura de geração de chave
-var jwtSecret = []byte("jwt_secret")
+var userRepo = repository.UserRepository{}
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 // HashPassword gera um hash da senha do usuário
 func HashPassword(password string) string {
-	hash := sha256.Sum256([]byte(password))
-	return hex.EncodeToString(hash[:])
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatalf("erro ao gerar hash da senha: %v", err)
+	}
+	return string(hashed)
+}
+
+// VerifyPassword verifica se a senha do usuário é válida
+func VerifyPassword(hashedPassword, password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	return err == nil
 }
 
 // Register cria um novo usuário
@@ -31,10 +43,11 @@ func (s *AuthServiceServer) Register(ctx context.Context, req *grpc.RegisterRequ
 	//Encripta a senha do usuário
 	hashedPassword := HashPassword(req.Password)
 
-	//TODO: Verificar se query dentro do serviço é uma boa prática
-	query := `INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id`
-	var userId int
-	err := db.DB.QueryRow(query, req.Username, req.Email, hashedPassword).Scan(&userId)
+	if req.Username == "" || req.Email == "" || req.Password == "" {
+		return nil, errors.New("todos os campos são obrigatórios")
+	}
+
+	userId, err := userRepo.CreateUser(req.Username, req.Email, hashedPassword)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao inserir usuário: %v", err)
 	}
@@ -48,11 +61,10 @@ func (s *AuthServiceServer) Register(ctx context.Context, req *grpc.RegisterRequ
 // Login realiza a autenticação do usuário
 func (s *AuthServiceServer) Login(ctx context.Context, req *grpc.LoginRequest) (*grpc.LoginResponse, error) {
 	hashedPassword := HashPassword(req.Password)
-	var userId int
 
-	query := `SELECT id, password_hash FROM users WHERE username = $1`
-	err := db.DB.QueryRow(query, req.Username).Scan(&userId, &hashedPassword)
-	if err != nil || hashedPassword != HashPassword(req.Password) {
+	// Busca o usuário no banco de dados e verifica se a senha está correta
+	userId, storedHashedPassword, err := userRepo.GetUserByUsername(req.Username)
+	if err != nil || !VerifyPassword(storedHashedPassword, hashedPassword) {
 		return nil, errors.New("usuário ou senha inválidos")
 	}
 

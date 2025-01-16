@@ -11,6 +11,7 @@ services:
       DB_USER: user
       DB_PASSWORD: password
       DB_NAME: auth_db
+      JWT_SECRET: chave_secreta
     depends_on:
       - postgres
 

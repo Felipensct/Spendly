@@ -13,13 +13,15 @@ RUN go mod download
 # Copy the entire project into the container
 COPY . .
 
-# Build the Go application
-RUN go build -o auth-service cmd/main.go
+# Build the Go application with CGO disabled
+RUN CGO_ENABLED=0 go build -o auth-service cmd/main.go
 
 # Use a minimal image to run the service
 FROM alpine:3.18
-
 WORKDIR /app
+
+# Add necessary dependencies
+RUN apk add --no-cache libc6-compat
 
 # Copy the binary from the builder image
 COPY --from=builder /app/auth-service .
