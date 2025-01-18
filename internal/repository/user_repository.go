@@ -1,16 +1,27 @@
 package repository
 
 import (
-	"auth-service/internal/db"
+	"database/sql"
 )
 
-type UserRepository struct{}
+type UserRepository struct {
+	db *sql.DB
+}
+
+func NewUserRepository(db *sql.DB) *UserRepository {
+	if db == nil {
+		panic("database connection cannot be nil")
+	}
+	return &UserRepository{
+		db: db,
+	}
+}
 
 // CreateUser cria um novo usuário no banco de dados
 func (repository *UserRepository) CreateUser(username, email, password string) (int, error) {
-	query := `INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id`
+	query := `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id`
 	var userId int
-	err := db.DB.QueryRow(query, username, email, password).Scan(&userId)
+	err := repository.db.QueryRow(query, username, email, password).Scan(&userId)
 	if err != nil {
 		return 0, err
 	}
@@ -19,10 +30,10 @@ func (repository *UserRepository) CreateUser(username, email, password string) (
 
 // GetUserByUsername busca um usuário no banco de dados pelo email
 func (repository *UserRepository) GetUserByUsername(username string) (int, string, error) {
-	query := `SELECT id, password FROM users WHERE name = $1`
+	query := `SELECT id, password_hash FROM users WHERE username = $1`
 	var userId int
 	var password string
-	err := db.DB.QueryRow(query, username).Scan(&userId, &password)
+	err := repository.db.QueryRow(query, username).Scan(&userId, &password)
 	if err != nil {
 		return 0, "", err
 	}

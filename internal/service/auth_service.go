@@ -18,9 +18,15 @@ import (
 
 type AuthServiceServer struct {
 	grpc.UnimplementedAuthServiceServer
+	userRepo *repository.UserRepository
 }
 
-var userRepo = repository.UserRepository{}
+func NewAuthServiceServer(userRepo *repository.UserRepository) *AuthServiceServer {
+	return &AuthServiceServer{
+		userRepo: userRepo,
+	}
+}
+
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 // HashPassword gera um hash da senha do usuário
@@ -40,14 +46,14 @@ func VerifyPassword(hashedPassword, password string) bool {
 
 // Register cria um novo usuário
 func (s *AuthServiceServer) Register(ctx context.Context, req *grpc.RegisterRequest) (*grpc.RegisterResponse, error) {
-	//Encripta a senha do usuário
 	hashedPassword := HashPassword(req.Password)
 
 	if req.Username == "" || req.Email == "" || req.Password == "" {
 		return nil, errors.New("todos os campos são obrigatórios")
 	}
 
-	userId, err := userRepo.CreateUser(req.Username, req.Email, hashedPassword)
+	// Use s.userRepo ao invés da variável global userRepo
+	userId, err := s.userRepo.CreateUser(req.Username, req.Email, hashedPassword)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao inserir usuário: %v", err)
 	}
@@ -63,7 +69,7 @@ func (s *AuthServiceServer) Login(ctx context.Context, req *grpc.LoginRequest) (
 	hashedPassword := HashPassword(req.Password)
 
 	// Busca o usuário no banco de dados e verifica se a senha está correta
-	userId, storedHashedPassword, err := userRepo.GetUserByUsername(req.Username)
+	userId, storedHashedPassword, err := s.userRepo.GetUserByUsername(req.Username)
 	if err != nil || !VerifyPassword(storedHashedPassword, hashedPassword) {
 		return nil, errors.New("usuário ou senha inválidos")
 	}
