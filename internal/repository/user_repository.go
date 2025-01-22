@@ -1,7 +1,10 @@
 package repository
 
 import (
+	"auth-service/internal/utils"
 	"database/sql"
+	"errors"
+	"fmt"
 )
 
 type UserRepository struct {
@@ -19,6 +22,14 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 // CreateUser cria um novo usuário no banco de dados
 func (repository *UserRepository) CreateUser(username, email, password string) (int, error) {
+	// Validações adicionais de segurança
+	if valid, err := utils.ValidateUsername(username); !valid {
+		return 0, fmt.Errorf("username inválido: %s", err)
+	}
+
+	if !utils.ValidateEmail(email) {
+		return 0, errors.New("email inválido")
+	}
 	query := `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id`
 	var userId int
 	err := repository.db.QueryRow(query, username, email, password).Scan(&userId)

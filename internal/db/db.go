@@ -10,6 +10,11 @@ import (
 var DB *sql.DB
 
 func InitDB(host, port, user, password, dbname string) {
+	// Garantir que a porta não está vazia
+	if port == "" {
+		port = "5432" // porta padrão do PostgreSQL
+	}
+
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname,

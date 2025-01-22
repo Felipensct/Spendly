@@ -3,6 +3,7 @@ package service
 import (
 	"auth-service/internal/grpc"
 	"auth-service/internal/repository"
+	"auth-service/internal/utils"
 	"context"
 	"errors"
 	"fmt"
@@ -46,6 +47,18 @@ func VerifyPassword(hashedPassword, password string) bool {
 
 // Register cria um novo usuário
 func (s *AuthServiceServer) Register(ctx context.Context, req *grpc.RegisterRequest) (*grpc.RegisterResponse, error) {
+	if valid, err := utils.ValidateUsername(req.Username); !valid {
+		return nil, fmt.Errorf("erro de username: %s", err)
+	}
+
+	if !utils.ValidateEmail(req.Email) {
+		return nil, errors.New("email inválido")
+	}
+
+	if valid, err := utils.ValidatePassword(req.Password); !valid {
+		return nil, fmt.Errorf("erro de senha: %s", err)
+	}
+
 	hashedPassword := HashPassword(req.Password)
 
 	if req.Username == "" || req.Email == "" || req.Password == "" {

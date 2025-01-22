@@ -26,7 +26,7 @@ func main() {
 
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("Falha ao escutar a porta 50051: %v", err)
+		log.Fatalf("Falha ao escutar a porta 5432: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()
